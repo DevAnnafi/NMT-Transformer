@@ -39,22 +39,22 @@ running log of decisions, bugs, and results.
 
 ## Project structure
 
-\```
+```
 nmt-transformer/
 ├── data/
 │   ├── raw/            # untouched downloaded corpora
-│   └── processed/       # cleaned, filtered, tokenized data
+│   └── processed/      # cleaned, filtered, tokenized data
 ├── src/
-│   ├── data/             # download, clean, tokenizer training, Dataset/DataLoader
-│   ├── model/            # Transformer implementation
-│   ├── training/          # training loop, schedulers, checkpointing
-│   ├── inference/         # greedy decode, beam search
-│   └── eval/               # BLEU scoring, attention visualization
-├── tests/                 # unit tests for each component
-├── configs/                # YAML configs for experiments
-├── scripts/                 # CLI entry points (train.py, translate.py, evaluate.py)
-└── docs/                    # progress log, notes
-\```
+│   ├── data/           # download, clean, tokenizer training, Dataset/DataLoader
+│   ├── model/          # Transformer implementation
+│   ├── training/       # training loop, schedulers, checkpointing
+│   ├── inference/      # greedy decode, beam search
+│   └── eval/           # BLEU scoring, attention visualization
+├── tests/              # unit tests for each component
+├── configs/            # YAML configs for experiments
+├── scripts/            # CLI entry points (train.py, translate.py, evaluate.py)
+└── docs/               # progress log, notes
+```
 
 ## Setup
 
