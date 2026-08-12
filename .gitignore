@@ -1,20 +1,50 @@
-# Data directories (keep structure, ignore contents)
+# ---- data ----
 data/raw/*
-!data/raw/.gitkeep
 data/processed/*
+!data/raw/.gitkeep
 !data/processed/.gitkeep
-
-# Archived datasets
-*.tar.gz
 *.tgz
+*.tar.gz
+*.gz
+*.zip
+*.sgm
 
-# ML/DL Model weights
+# ---- model artifacts ----
+checkpoints/
 *.pt
+*.pth
 *.ckpt
+*.bin
+runs/
+logs/
+*.log
 
-# Environment & Cache
-venv/
+# ---- tokenizer artifacts ----
+*.bpe
+*.vocab
+*.model
+
+# ---- python ----
 __pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+venv/
+.venv/
+env/
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
 
-# OS files
+# ---- notebooks ----
+.ipynb_checkpoints/
+
+# ---- editor / os ----
 .DS_Store
+.vscode/
+.idea/
+*.swp

@@ -1,0 +1,122 @@
+# nmt-transformer — base configuration
+# WMT14 English-German
+
+data:
+  raw_dir: data/raw
+  processed_dir: data/processed
+  src_lang: en
+  tgt_lang: de
+
+  # NOTE: expected_bytes is deliberately null. Download once, record the real
+  # size, then commit the number. Asserting against a guess is worse than no
+  # assertion at all.
+  #
+  # NOTE: src_path / tgt_path are best-effort and MUST be verified against the
+  # actual archive on first extraction. Layout differs between corpora and this
+  # is exactly what the Day 1 extraction step is meant to catch.
+
+  corpora:
+    - name: news_commentary
+      url: http://www.statmt.org/wmt14/training-parallel-nc-v9.tgz
+      archive: training-parallel-nc-v9.tgz
+      expected_bytes: null
+      src_path: training/news-commentary-v9.de-en.en
+      tgt_path: training/news-commentary-v9.de-en.de
+      split: train
+      approx_pairs: 200000
+
+    - name: europarl
+      # Hosted under wmt13 — the corpus was unchanged for WMT14.
+      url: http://www.statmt.org/wmt13/training-parallel-europarl-v7.tgz
+      archive: training-parallel-europarl-v7.tgz
+      expected_bytes: null
+      src_path: training/europarl-v7.de-en.en
+      tgt_path: training/europarl-v7.de-en.de
+      split: train
+      approx_pairs: 1900000
+
+    - name: commoncrawl
+      # Largest and noisiest. Expect misalignment and wrong-language lines.
+      url: http://www.statmt.org/wmt13/training-parallel-commoncrawl.tgz
+      archive: training-parallel-commoncrawl.tgz
+      expected_bytes: null
+      src_path: commoncrawl.de-en.en
+      tgt_path: commoncrawl.de-en.de
+      split: train
+      approx_pairs: 2400000
+
+    # ---- dev / test ----
+    # These ship as SGML, not plain parallel text. They need an extra
+    # unwrapping step before use — do not assume the training-corpus
+    # extraction path works for them.
+
+    - name: newstest2013
+      # URL UNVERIFIED — check statmt.org/wmt14/translation-task.html
+      url: http://www.statmt.org/wmt14/dev.tgz
+      archive: dev.tgz
+      expected_bytes: null
+      src_path: dev/newstest2013.en
+      tgt_path: dev/newstest2013.de
+      split: dev
+      format: sgml
+      approx_pairs: 3000
+
+    - name: newstest2014
+      url: http://www.statmt.org/wmt14/test-filtered.tgz
+      archive: test-filtered.tgz
+      expected_bytes: null
+      src_path: test/newstest2014-deen-src.en.sgm
+      tgt_path: test/newstest2014-deen-ref.de.sgm
+      split: test
+      format: sgml
+      approx_pairs: 3003
+
+download:
+  chunk_size: 1048576        # 1 MiB streaming writes
+  partial_suffix: .partial   # rename on success so interrupted runs never look complete
+  timeout_seconds: 300
+
+# ---- filled in on Day 2 ----
+cleaning:
+  max_len: null              # drop pairs longer than this (in tokens)
+  max_len_ratio: null        # drop pairs whose src/tgt length ratio exceeds this
+  dedupe: true
+  drop_empty: true
+  normalize_unicode: true
+  language_id: false         # enable for commoncrawl
+
+# ---- filled in on Day 4 ----
+tokenizer:
+  type: bpe
+  shared_vocab: true
+  num_merges: 37000
+  special_tokens:
+    pad: 0
+    unk: 1
+    bos: 2
+    eos: 3
+
+# ---- Day 6 onward. Paper base model, section 5.1 ----
+model:
+  d_model: 512
+  num_heads: 8
+  d_ff: 2048
+  num_layers: 6
+  dropout: 0.1
+  max_len: 512               # must exceed cleaning.max_len plus bos/eos
+
+training:
+  max_pairs: null            # subsample size — set after measuring throughput
+  batch_tokens: 4096         # batch by token count, not sentence count
+  label_smoothing: 0.1
+  warmup_steps: 4000
+  grad_clip: 1.0
+  adam_betas: [0.9, 0.98]
+  adam_eps: 1.0e-9
+  checkpoint_dir: checkpoints
+  seed: 42
+
+inference:
+  beam_size: 4
+  length_penalty: 0.6
+  max_decode_len: 256
