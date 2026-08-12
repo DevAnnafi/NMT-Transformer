@@ -1,0 +1,20 @@
+# Data directories (keep structure, ignore contents)
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+
+# Archived datasets
+*.tar.gz
+*.tgz
+
+# ML/DL Model weights
+*.pt
+*.ckpt
+
+# Environment & Cache
+venv/
+__pycache__/
+
+# OS files
+.DS_Store
