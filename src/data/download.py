@@ -15,3 +15,9 @@ def get_destination_path(entry: Dict[str, Any], raw_dir: str | Path, partial: bo
         
     return base_path
 
+def download_corpus(entry, cfg) -> tuple[Path, bool]:
+    dest = get_destination_path(entry, cfg["data"]["raw_dir"])
+    if dest.exists():
+        return dest, False
+    raise NotImplementedError   # fetch comes in step 4
+
