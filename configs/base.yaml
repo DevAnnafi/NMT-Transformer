@@ -19,7 +19,7 @@ data:
     - name: news_commentary
       url: http://www.statmt.org/wmt14/training-parallel-nc-v9.tgz
       archive: training-parallel-nc-v9.tgz
-      expected_bytes: null
+      expected_bytes: 80418416
       src_path: training/news-commentary-v9.de-en.en
       tgt_path: training/news-commentary-v9.de-en.de
       split: train
