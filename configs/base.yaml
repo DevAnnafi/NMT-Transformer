@@ -7,29 +7,25 @@ data:
   src_lang: en
   tgt_lang: de
 
-  # NOTE: expected_bytes is deliberately null. Download once, record the real
-  # size, then commit the number. Asserting against a guess is worse than no
-  # assertion at all.
-  #
-  # NOTE: src_path / tgt_path are best-effort and MUST be verified against the
-  # actual archive on first extraction. Layout differs between corpora and this
-  # is exactly what the Day 1 extraction step is meant to catch.
+  # Training corpora below are fully verified: URLs fetched, byte counts
+  # measured with `ls -l`, and archive member paths confirmed with `tar -tzf`.
+  # Dev/test entries are NOT yet verified — see the note above them.
 
   corpora:
     - name: news_commentary
-      url: http://www.statmt.org/wmt14/training-parallel-nc-v9.tgz
+      url: https://statmt.org/wmt14/training-parallel-nc-v9.tgz
       archive: training-parallel-nc-v9.tgz
       expected_bytes: 80418416
       src_path: training/news-commentary-v9.de-en.en
       tgt_path: training/news-commentary-v9.de-en.de
       split: train
-      approx_pairs: 200000
+      pairs: 201288              # measured, not estimated
 
     - name: europarl
       # Hosted under wmt13 — the corpus was unchanged for WMT14.
-      url: http://www.statmt.org/wmt13/training-parallel-europarl-v7.tgz
+      url: https://statmt.org/wmt13/training-parallel-europarl-v7.tgz
       archive: training-parallel-europarl-v7.tgz
-      expected_bytes: null
+      expected_bytes: 657632379
       src_path: training/europarl-v7.de-en.en
       tgt_path: training/europarl-v7.de-en.de
       split: train
@@ -37,36 +33,49 @@ data:
 
     - name: commoncrawl
       # Largest and noisiest. Expect misalignment and wrong-language lines.
-      url: http://www.statmt.org/wmt13/training-parallel-commoncrawl.tgz
+      # Members sit at the archive root, NOT under training/.
+      # A third member, commoncrawl.de-en.annotation, records pair provenance —
+      # match on the explicit paths below rather than globbing *de-en*.
+      url: https://statmt.org/wmt13/training-parallel-commoncrawl.tgz
       archive: training-parallel-commoncrawl.tgz
-      expected_bytes: null
+      expected_bytes: 918311367
       src_path: commoncrawl.de-en.en
       tgt_path: commoncrawl.de-en.de
       split: train
       approx_pairs: 2400000
 
     # ---- dev / test ----
-    # These ship as SGML, not plain parallel text. They need an extra
-    # unwrapping step before use — do not assume the training-corpus
-    # extraction path works for them.
+    # NOT YET VERIFIED. Download each, run `tar -tzf` on it, and correct the
+    # paths and expected_bytes from what the archive actually contains — same
+    # procedure used for the three training corpora above.
+    #
+    # dev.tgz ships newstest2013 in BOTH raw text and SGML. Plain text is used
+    # here since it needs no unwrapping.
+    #
+    # test-filtered.tgz is SGML only and DOES need unwrapping (Day 2).
+    # The "deen" in its filenames denotes the German->English direction, so
+    # confirm which side is source and which is reference before trusting the
+    # paths below — they are a guess.
 
     - name: newstest2013
-      # URL UNVERIFIED — check statmt.org/wmt14/translation-task.html
-      url: http://www.statmt.org/wmt14/dev.tgz
+      url: https://statmt.org/wmt14/dev.tgz
       archive: dev.tgz
       expected_bytes: null
-      src_path: dev/newstest2013.en
-      tgt_path: dev/newstest2013.de
+      src_path: dev/newstest2013.en      # verify
+      tgt_path: dev/newstest2013.de      # verify
       split: dev
-      format: sgml
+      format: text
       approx_pairs: 3000
 
     - name: newstest2014
-      url: http://www.statmt.org/wmt14/test-filtered.tgz
+      # Filtered set = the files actually used in the campaign evaluation.
+      # Chosen over test-full.tgz so BLEU is comparable to published numbers
+      # (Vaswani et al. report 27.3 on this set). Do not switch casually.
+      url: https://statmt.org/wmt14/test-filtered.tgz
       archive: test-filtered.tgz
       expected_bytes: null
-      src_path: test/newstest2014-deen-src.en.sgm
-      tgt_path: test/newstest2014-deen-ref.de.sgm
+      src_path: null                     # fill in from `tar -tzf`
+      tgt_path: null                     # fill in from `tar -tzf`
       split: test
       format: sgml
       approx_pairs: 3003
@@ -82,14 +91,18 @@ cleaning:
   max_len_ratio: null        # drop pairs whose src/tgt length ratio exceeds this
   dedupe: true
   drop_empty: true
-  normalize_unicode: true
+  normalize_unicode: true    # corpus contains curly quotes (U+2019) and en dashes
   language_id: false         # enable for commoncrawl
 
 # ---- filled in on Day 4 ----
 tokenizer:
   type: bpe
   shared_vocab: true
-  num_merges: 37000
+  # Paper section 5.1 reports a shared source-target vocabulary of ~37000
+  # tokens. This is the FINAL vocab size, not a merge count: the merge count
+  # is vocab_size minus the base alphabet minus the special tokens, and gets
+  # derived on Day 4 once the alphabet is known.
+  vocab_size: 37000
   special_tokens:
     pad: 0
     unk: 1
