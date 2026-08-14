@@ -60,25 +60,26 @@ data:
     - name: newstest2013
       url: https://statmt.org/wmt14/dev.tgz
       archive: dev.tgz
-      expected_bytes: null
-      src_path: dev/newstest2013.en      # verify
-      tgt_path: dev/newstest2013.de      # verify
+      expected_bytes: 17742707
+      src_path: dev/newstest2013.en      
+      tgt_path: dev/newstest2013.de      
       split: dev
       format: text
       approx_pairs: 3000
 
     - name: newstest2014
-      # Filtered set = the files actually used in the campaign evaluation.
-      # Chosen over test-full.tgz so BLEU is comparable to published numbers
-      # (Vaswani et al. report 27.3 on this set). Do not switch casually.
-      url: https://statmt.org/wmt14/test-filtered.tgz
-      archive: test-filtered.tgz
-      expected_bytes: null
-      src_path: null                     # fill in from `tar -tzf`
-      tgt_path: null                     # fill in from `tar -tzf`
+      # Full set, not test-filtered.tgz. Published BLEU numbers — including
+      # the paper's 27.3 — are computed on all 3003 segments. The filtered
+      # set has 2737 (verified with grep -c '<seg') and would give an
+      # incomparable score.
+      url: https://statmt.org/wmt14/test-full.tgz
+      archive: test-full.tgz
+      expected_bytes: 3255445
+      src_path: test-full/newstest2014-deen-src.en.sgm
+      tgt_path: test-full/newstest2014-deen-ref.de.sgm
       split: test
       format: sgml
-      approx_pairs: 3003
+      pairs: 3003
 
 download:
   chunk_size: 1048576        # 1 MiB streaming writes

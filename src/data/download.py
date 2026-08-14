@@ -32,7 +32,6 @@ def download_corpus(entry, cfg) -> tuple[Path, bool]:
     if expected is not None and actual != expected:
         partial.unlink()
         raise ValueError(f"{entry['name']}: expected {expected} bytes, got {actual}")
-    print(f"{entry['name']}: {actual} bytes (record this in config)")
     os.replace(partial, dest)
     return dest, True
 

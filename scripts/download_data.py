@@ -40,8 +40,14 @@ def select_entries(cfg, args) -> list[dict]:
     print(f"error: unknown corpus '{args.corpus}'", file=sys.stderr)
     print(f"available: {names}", file=sys.stderr)
     sys.exit(1)
-    
+
 args = parser.parse_args()
 cfg = load_config(args.config)
 entries = select_entries(cfg, args)
-print(len(entries), [e["name"] for e in entries])
+for entry in entries:
+    path, fetched = download_corpus(entry, cfg)
+    if fetched:
+        print(f"{entry['name']}: fetched {path.stat().st_size} bytes")
+    else:
+        print(entry["name"], "already present")
+    
