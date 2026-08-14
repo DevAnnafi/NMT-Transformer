@@ -26,5 +26,11 @@ def download_corpus(entry, cfg) -> tuple[Path, bool]:
     with open(partial, "wb") as f:
         for chunk in resp.iter_content(chunk_size=cfg["download"]["chunk_size"]):
             f.write(chunk)
+    actual = partial.stat().st_size
+    expected = entry["expected_bytes"]
+    if expected is not None and actual != expected:
+        partial.unlink()
+        raise ValueError(f"{entry['name']}: expected {expected} bytes, got {actual}")
+    print(f"{entry['name']}: {actual} bytes (record this in config)")
     return dest, True
 
