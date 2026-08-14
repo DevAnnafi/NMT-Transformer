@@ -2,6 +2,7 @@ import yaml
 from pathlib import Path
 from typing import Dict, Any
 import requests
+import os
 
 def load_config(path):
     with open(path, "r", encoding="utf-8") as f:
@@ -32,5 +33,6 @@ def download_corpus(entry, cfg) -> tuple[Path, bool]:
         partial.unlink()
         raise ValueError(f"{entry['name']}: expected {expected} bytes, got {actual}")
     print(f"{entry['name']}: {actual} bytes (record this in config)")
+    os.replace(partial, dest)
     return dest, True
 
