@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Dict, Any
 import requests
 import os
+import tarfile
 
 def load_config(path):
     with open(path, "r", encoding="utf-8") as f:
@@ -32,7 +33,29 @@ def download_corpus(entry, cfg) -> tuple[Path, bool]:
     if expected is not None and actual != expected:
         partial.unlink()
         raise ValueError(f"{entry['name']}: expected {expected} bytes, got {actual}")
-    print(f"{entry['name']}: {actual} bytes (record this in config)")
     os.replace(partial, dest)
     return dest, True
+
+def extract_corpus(entry, cfg) -> tuple[Path, Path]:
+    raw_dir = Path(cfg["data"]["raw_dir"])
+    src_out = raw_dir / entry["src_path"]
+    tgt_out = raw_dir / entry["tgt_path"]
+    if src_out.exists() and tgt_out.exists():
+        return src_out, tgt_out
+    archive_path = get_destination_path(entry, cfg["data"]["raw_dir"])
+    with tarfile.open(archive_path, "r:gz") as tar:
+        tar.extract(entry["src_path"], path=raw_dir)
+        tar.extract(entry["tgt_path"], path=raw_dir)
+    return src_out, tgt_out
+
+def count_lines(path):
+    count = 0
+    with open(path, "r", encoding="utf-8", newline="\n") as f:
+        for line in f:
+            count += 1
+    return count
+        
+        
+
+    
 
