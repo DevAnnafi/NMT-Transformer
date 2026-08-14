@@ -1,5 +1,6 @@
 from src.data.download import load_config, download_corpus
 import argparse
+import sys
 
 parser = argparse.ArgumentParser(
     description="NMT-Transformer"
@@ -27,3 +28,20 @@ group.add_argument(
 args = parser.parse_args()
 
 print(args)
+
+def select_entries(cfg, args) -> list[dict]:
+    corpora = cfg["data"]["corpora"]
+    if args.all:
+        return corpora
+    matches = [e for e in corpora if e["name"] == args.corpus] 
+    if matches: 
+        return matches
+    names = ", ".join(e["name"] for e in corpora)
+    print(f"error: unknown corpus '{args.corpus}'", file=sys.stderr)
+    print(f"available: {names}", file=sys.stderr)
+    sys.exit(1)
+    
+args = parser.parse_args()
+cfg = load_config(args.config)
+entries = select_entries(cfg, args)
+print(len(entries), [e["name"] for e in entries])
