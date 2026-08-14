@@ -47,6 +47,13 @@ def extract_corpus(entry, cfg) -> tuple[Path, Path]:
         tar.extract(entry["src_path"], path=raw_dir)
         tar.extract(entry["tgt_path"], path=raw_dir)
     return src_out, tgt_out
+
+def count_lines(path):
+    count = 0
+    with open(path, "r", encoding="utf-8", newline="\n") as f:
+        for line in f:
+            count += 1
+    return count
         
         
 
