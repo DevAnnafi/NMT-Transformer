@@ -29,7 +29,7 @@ data:
       src_path: training/europarl-v7.de-en.en
       tgt_path: training/europarl-v7.de-en.de
       split: train
-      approx_pairs: 1900000
+      pairs: 1920209
 
     - name: commoncrawl
       # Largest and noisiest. Expect misalignment and wrong-language lines.
@@ -42,7 +42,7 @@ data:
       src_path: commoncrawl.de-en.en
       tgt_path: commoncrawl.de-en.de
       split: train
-      approx_pairs: 2400000
+      pairs: 2399123
 
     # ---- dev / test ----
     # NOT YET VERIFIED. Download each, run `tar -tzf` on it, and correct the
