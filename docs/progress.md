@@ -33,10 +33,14 @@ bare `\r` as a line terminator, which made counts disagree with `wc -l` by 707
 lines on the English side of news_commentary. Restricting to `\n` makes counts
 reproducible across tools.
 
-### Observations for Day 2 — `clean.py`
+---
 
-From reading the first 50 lines of both sides of news_commentary. This is the
-*clean* corpus; commoncrawl still needs the same inspection and will be worse.
+## Observations for Day 2 — `clean.py`
+
+### news_commentary
+
+From reading the first 50 lines of both sides. This is the *clean* corpus and
+its problems are still subtle.
 
 **Control characters.** 3,938 bare `\r` in the German side. Strip control
 characters first, before any other filter touches the text.
@@ -67,16 +71,77 @@ not necessarily from the same document.
 "Und es kam, wie es kommen musste." Any filter assuming word-level
 correspondence will flag correct pairs.
 
-### Caveat
+### commoncrawl
 
-Equal line counts prove the files were not truncated and did not drift. They
-say nothing about whether line *n* on each side are translations of each other.
-Commoncrawl is known for positionally-aligned pairs that are not translations —
-that is what the length-ratio filter and language ID are for.
+From reading lines 1–40 and 1,200,000–1,200,030 of both sides.
 
-### Still to do before Day 2
+**Wholesale misalignment.** Lines 1–7 align correctly. From line 8 onward the
+two sides diverge completely: English line 8 is "Translator Internet is a
+Toolbar for MS Internet Explorer", German line 8 is "ACDSee 9 Photo Manager
+Organize your photos." Different products entirely — and the German side of
+that block is written in English. Thousands of "German" lines contain no
+German. **This is why `language_id: true` is required for this corpus, not
+optional.**
 
-- Read 50 lines of commoncrawl and add findings here
-- The misaligned block at lines 8+ where the German side is English, the isolated bad pair at ~1.2M, the missing-space artifacts, the truncation ellipses.
-- Record measured `pairs` values in `configs/base.yaml`
+**Isolated bad pairs also occur.** Around line 1.2M the alignment is otherwise
+good — a long article on the Ligna radio ballet translates line for line — but
+one pair breaks ("Our goal is to limit the environmental pollution…" against
+„EKO OSTA" ist das führende Unternehmen für Entsorgung…") and the next line
+realigns. Both failure modes exist and need different handling: block drift
+versus isolated noise.
 
+**Scraping artifacts.** Missing spaces where HTML was stripped (`andrelates`,
+`tothe`, `downloadthe`). Truncation ellipses ending a large share of lines —
+these are listing pages cut off mid-sentence. Space before punctuation
+(`Stahlguss .`, `phrases ?`). Corrupted quote characters: `#nickvoices#` where
+the English side has `'nickvoices'`.
+
+**Near-duplicates.** The WordBanker blurb appears twice, differing only in
+"French people" versus "Italian people". These are *not* duplicates to remove —
+they are different sentences with different correct German translations.
+
+**German lines starting lowercase** (`die Mitteilungen`, `der Vertrieb`).
+German capitalises sentence starts and all nouns, so this is a cheap quality
+signal.
+
+---
+
+## Filter order decided
+
+1. Strip control characters, normalise whitespace, fold punctuation
+2. Drop pairs where either side is empty
+3. Length and length-ratio filters
+4. Language ID (commoncrawl)
+5. Exact deduplication on the `(src, tgt)` pair
+
+Cheap filters first, expensive last, each shrinking the input to the next.
+
+**Normalise before dedup, not after.** Byte-level hashing of raw text treats
+`"Der Bau.  "` and `"Der Bau."` as distinct, so both survive. Normalising first
+means exact dedup catches strictly more, at no extra cost since the text is
+being normalised anyway.
+
+**Dedup on the pair, never per side.** Hashing the two files independently
+would delete different row indices from each and destroy the alignment verified
+on Day 1. One hash per `(src, tgt)` tuple; drop the row from both files or
+neither.
+
+**Exact dedup only, no fuzzy/MinHash.** Jaccard-similarity deduplication would
+delete the WordBanker pairs, which are legitimate distinct sentences, and would
+do the same at scale to Europarl's repetitive procedural language. Standard MT
+practice is exact pair-level dedup.
+
+---
+
+## Caveat carried into Day 2
+
+Equal line counts prove the files were not truncated and did not drift as a
+whole. They say nothing about whether line *n* on each side are translations of
+each other — commoncrawl is the proof of that, with 2,399,123 lines on both
+sides and large blocks that are not parallel at all.
+
+## Next
+
+`max_len` and `max_len_ratio` are still `null` in config. Measure the token
+length distribution per corpus (median, 95th, 99th, 99.9th, max) and pick
+thresholds from the observed tail rather than from a conventional default.
