@@ -77,4 +77,6 @@ that is what the length-ratio filter and language ID are for.
 ### Still to do before Day 2
 
 - Read 50 lines of commoncrawl and add findings here
+- The misaligned block at lines 8+ where the German side is English, the isolated bad pair at ~1.2M, the missing-space artifacts, the truncation ellipses.
 - Record measured `pairs` values in `configs/base.yaml`
+
