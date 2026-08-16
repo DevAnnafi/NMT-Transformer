@@ -65,7 +65,7 @@ data:
       tgt_path: dev/newstest2013.de      
       split: dev
       format: text
-      approx_pairs: 3000
+      pairs: 3000
 
     - name: newstest2014
       # Full set, not test-filtered.tgz. Published BLEU numbers — including
@@ -93,7 +93,7 @@ cleaning:
   dedupe: true
   drop_empty: true
   normalize_unicode: true    # corpus contains curly quotes (U+2019) and en dashes
-  language_id: false         # enable for commoncrawl
+  language_id: true       # enable for commoncrawl
 
 # ---- filled in on Day 4 ----
 tokenizer:
