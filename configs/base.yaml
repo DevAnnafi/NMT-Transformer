@@ -7,9 +7,8 @@ data:
   src_lang: en
   tgt_lang: de
 
-  # Training corpora below are fully verified: URLs fetched, byte counts
-  # measured with `ls -l`, and archive member paths confirmed with `tar -tzf`.
-  # Dev/test entries are NOT yet verified — see the note above them.
+  # All entries verified: URLs fetched, byte counts measured with `ls -l`,
+  # and archive member paths confirmed with `tar -tzf`.
 
   corpora:
     - name: news_commentary
@@ -32,8 +31,10 @@ data:
       pairs: 1920209
 
     - name: commoncrawl
-      # Largest and noisiest. Expect misalignment and wrong-language lines.
-      # Members sit at the archive root, NOT under training/.
+      # Largest and noisiest. Verified failure modes: block-level misalignment
+      # (from line 8 onward the "German" side is English), isolated bad pairs,
+      # and topically-related-but-not-parallel text that no cheap filter
+      # catches. Members sit at the archive root, NOT under training/.
       # A third member, commoncrawl.de-en.annotation, records pair provenance —
       # match on the explicit paths below rather than globbing *de-en*.
       url: https://statmt.org/wmt13/training-parallel-commoncrawl.tgz
@@ -45,24 +46,16 @@ data:
       pairs: 2399123
 
     # ---- dev / test ----
-    # NOT YET VERIFIED. Download each, run `tar -tzf` on it, and correct the
-    # paths and expected_bytes from what the archive actually contains — same
-    # procedure used for the three training corpora above.
-    #
-    # dev.tgz ships newstest2013 in BOTH raw text and SGML. Plain text is used
-    # here since it needs no unwrapping.
-    #
-    # test-filtered.tgz is SGML only and DOES need unwrapping (Day 2).
-    # The "deen" in its filenames denotes the German->English direction, so
-    # confirm which side is source and which is reference before trusting the
-    # paths below — they are a guess.
+    # dev.tgz ships newstest2013 in both raw text and SGML; plain text is used
+    # here since it needs no unwrapping. newstest2014 is SGML only and needs
+    # unwrapping before evaluation.
 
     - name: newstest2013
       url: https://statmt.org/wmt14/dev.tgz
       archive: dev.tgz
       expected_bytes: 17742707
-      src_path: dev/newstest2013.en      
-      tgt_path: dev/newstest2013.de      
+      src_path: dev/newstest2013.en
+      tgt_path: dev/newstest2013.de
       split: dev
       format: text
       pairs: 3000
@@ -86,14 +79,28 @@ download:
   partial_suffix: .partial   # rename on success so interrupted runs never look complete
   timeout_seconds: 300
 
-# ---- filled in on Day 2 ----
+# ---- Day 2 ----
+# Thresholds measured from the corpora, not taken from convention. Whitespace
+# token counts at the 99.9th percentile:
+#   length (en/de)  news_commentary 76/78, europarl 107/100, commoncrawl 103/94
+#   ratio           news_commentary 2.9,   europarl 4.0,     commoncrawl 8.2
+# Maximum observed length: 171 / 668 / 4225 — commoncrawl's tail is scraped
+# pages dumped onto a single line.
 cleaning:
-  max_len: null              # drop pairs longer than this (in tokens)
-  max_len_ratio: null        # drop pairs whose src/tgt length ratio exceeds this
-  dedupe: true
+  min_len: 1
+  max_len: 100             # just above europarl's 99.9th; cuts commoncrawl's tail
+  max_len_ratio: 2.5       # 15 commoncrawl pairs above this were inspected;
+                           # none were worth keeping
+  max_token_chars: 40      # catches lines with all spaces stripped, e.g.
+                           # "WelcheLektionenlassensichnunausdiesem..." — these
+                           # otherwise pass as a handful of legitimate tokens
+  dedupe: true             # exact, on the (src, tgt) pair jointly — never per
+                           # side, and no fuzzy/MinHash (see docs/progress.md)
   drop_empty: true
-  normalize_unicode: true    # corpus contains curly quotes (U+2019) and en dashes
-  language_id: true       # enable for commoncrawl
+  normalize_unicode: true  # curly quotes (U+2019, U+201C-E), en dash (U+2013),
+                           # soft hyphen (U+00AD), stray CR (3938 in nc German)
+  language_id: true        # all three corpora, not just commoncrawl:
+                           # news_commentary contains Chinese source lines
 
 # ---- filled in on Day 4 ----
 tokenizer:
