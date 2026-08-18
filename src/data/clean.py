@@ -26,18 +26,6 @@ def normalize(text: str) -> str:
 
     return collapsed.strip()
 
-cases = [
-    "des Goldes  hinwiesen",       # double space collapses
-    "verzehnfachen?  ",            # trailing space stripped
-    "it\u00adwill",                # soft hyphen deleted -> "itwill"
-    "\u201eFreak Peak\u201c",      # German quotes -> straight
-    "gold\u2019s risks",           # curly apostrophe -> straight
-    "10.000 Dollar",               # UNCHANGED
-    "$10,000",                     # UNCHANGED
-]
-for c in cases:
-    print(repr(c), "->", repr(normalize(c)))
-
 def is_non_empty(src, tgt):
     return bool(src) and bool(tgt)
 
