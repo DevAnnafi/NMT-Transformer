@@ -1,6 +1,8 @@
 import re
 import unicodedata
 import py3langid as langid
+from src.data.download import extract_corpus
+from pathlib import Path
 
 def normalize(text: str) -> str:
     """Normalise one line of corpus text. Returns the cleaned string."""
@@ -23,18 +25,6 @@ def normalize(text: str) -> str:
     collapsed = re.sub(r"\s+", " ", text)
 
     return collapsed.strip()
-
-cases = [
-    "des Goldes  hinwiesen",       # double space collapses
-    "verzehnfachen?  ",            # trailing space stripped
-    "it\u00adwill",                # soft hyphen deleted -> "itwill"
-    "\u201eFreak Peak\u201c",      # German quotes -> straight
-    "gold\u2019s risks",           # curly apostrophe -> straight
-    "10.000 Dollar",               # UNCHANGED
-    "$10,000",                     # UNCHANGED
-]
-for c in cases:
-    print(repr(c), "->", repr(normalize(c)))
 
 def is_non_empty(src, tgt):
     return bool(src) and bool(tgt)
@@ -70,6 +60,79 @@ def is_not_duplicate(src: str, tgt: str, seen: set) -> bool:
         return False
     seen.add(key)
     return True
+
+def clean_corpus(entry, cfg) -> dict:
+    src_file, tgt_file = extract_corpus(entry, cfg)
+
+    processed_dir = Path(cfg["data"]["processed_dir"])
+    processed_dir.mkdir(parents=True, exist_ok=True)
+    src_lang = cfg["data"]["src_lang"]
+    tgt_lang = cfg["data"]["tgt_lang"]
+    src_out = processed_dir / f"{entry['name']}.{src_lang}"
+    tgt_out = processed_dir / f"{entry['name']}.{tgt_lang}"
+
+    cleaning = cfg["cleaning"]
+    min_len = cleaning["min_len"]
+    max_len = cleaning["max_len"]
+    max_len_ratio = cleaning["max_len_ratio"]
+    max_token_chars = cleaning["max_token_chars"]
+    language_id = cleaning["language_id"]
+
+    seen = set()
+    stats = {
+        "total": 0,
+        "empty": 0,
+        "length": 0,
+        "ratio": 0,
+        "giant_token": 0,
+        "language": 0,
+        "duplicate": 0,
+        "kept": 0,
+    }
+
+    with open(src_file, encoding="utf-8", newline="\n") as fs, \
+         open(tgt_file, encoding="utf-8", newline="\n") as ft, \
+         open(src_out, "w", encoding="utf-8") as os_, \
+         open(tgt_out, "w", encoding="utf-8") as ot:
+
+        for s, t in zip(fs, ft):
+            stats["total"] += 1
+
+            s = normalize(s)
+            t = normalize(t)
+
+            if not is_non_empty(s, t):
+                stats["empty"] += 1
+                continue
+
+            if not within_length(s, t, min_len, max_len):
+                stats["length"] += 1
+                continue
+
+            if not within_ratio(s, t, max_len_ratio):
+                stats["ratio"] += 1
+                continue
+
+            if not (has_no_giant_token(s, max_token_chars)
+                    and has_no_giant_token(t, max_token_chars)):
+                stats["giant_token"] += 1
+                continue
+
+            if language_id and not is_expected_language(s, t, src_lang, tgt_lang):
+                stats["language"] += 1
+                continue
+
+            if not is_not_duplicate(s, t, seen):
+                stats["duplicate"] += 1
+                continue
+
+            os_.write(s + "\n")
+            ot.write(t + "\n")
+            stats["kept"] += 1
+
+    return stats
+    
+
 
 
     
