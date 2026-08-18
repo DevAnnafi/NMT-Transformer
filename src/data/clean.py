@@ -64,5 +64,12 @@ def is_expected_language(src: str, tgt: str, src_lang: str, tgt_lang: str) -> bo
     tgt_result = langid.classify(tgt)[0]
     return src_result == src_lang and tgt_result == tgt_lang
 
+def is_not_duplicate(src: str, tgt: str, seen: set) -> bool:
+    key = (src, tgt) 
+    if key in seen:
+        return False
+    seen.add(key)
+    return True
 
 
+    
