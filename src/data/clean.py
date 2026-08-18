@@ -1,5 +1,6 @@
 import re
 import unicodedata
+import py3langid as langid
 
 def normalize(text: str) -> str:
     """Normalise one line of corpus text. Returns the cleaned string."""
@@ -58,4 +59,17 @@ def has_no_giant_token(text, max_chars):
     max_len = max(len(w) for w in tokens)
     return max_len < max_chars
 
+def is_expected_language(src: str, tgt: str, src_lang: str, tgt_lang: str) -> bool:
+    src_result = langid.classify(src)[0]
+    tgt_result = langid.classify(tgt)[0]
+    return src_result == src_lang and tgt_result == tgt_lang
 
+def is_not_duplicate(src: str, tgt: str, seen: set) -> bool:
+    key = (src, tgt) 
+    if key in seen:
+        return False
+    seen.add(key)
+    return True
+
+
+    
