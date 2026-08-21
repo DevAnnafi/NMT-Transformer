@@ -101,6 +101,7 @@ cleaning:
                            # soft hyphen (U+00AD), stray CR (3938 in nc German)
   language_id: true        # all three corpora, not just commoncrawl:
                            # news_commentary contains Chinese source lines
+  language_id_min_tokens: 5
 
 # ---- filled in on Day 4 ----
 tokenizer:
