@@ -203,3 +203,117 @@ Equal line counts prove the files were not truncated and did not drift as a
 whole. They say nothing about whether line *n* on each side are translations of
 each other — commoncrawl is the proof, with 2,399,123 lines on both sides and
 large blocks that are not parallel at all.
+
+## Day 2 results — filter statistics
+
+### Run A: `min_len: 1`, language ID on all pairs
+
+| filter | news_commentary | europarl | commoncrawl |
+|---|---|---|---|
+| total | 201,288 | 1,920,209 | 2,399,123 |
+| empty | 546 | 11,289 | 0 |
+| length | 34 | 3,289 | 3,431 |
+| ratio | 296 | 6,644 | 122,520 |
+| giant_token | 99 | 185 | 3,656 |
+| language | 2,080 | 19,727 | 162,384 |
+| duplicate | 304 | 28,241 | 221 |
+| **kept** | **197,929** | **1,850,834** | **2,106,911** |
+
+Total: 4,520,620 → 4,155,674 kept (8.1% dropped).
+
+Counts sum exactly to `total` for every corpus, so each pair is attributed
+once. Output files are line-for-line equal on both sides, preserving the
+alignment invariant from Day 1.
+
+Runtime: 13m23s for europarl (~2,400 pairs/sec), 15m03s for commoncrawl.
+Language ID dominates — two pure-Python classifications per pair.
+
+**Counts are order-dependent.** A pair is attributed to the first filter that
+rejects it and never reaches the later ones, so "dropped by ratio" means
+"dropped by ratio, among pairs that passed length". These are not independent
+measurements of how much each problem exists in the corpus.
+
+### What run A showed
+
+**commoncrawl behaves as predicted.** Language 6.8% and ratio 5.1%, against
+~1% and ~0.3% on the two clean corpora. The wholesale misalignment found by
+hand at line 8 is being caught at scale.
+
+**The ~1% language drop on clean corpora is classifier error, not
+contamination.** news_commentary and europarl both dropped 1.03% — but
+europarl is professionally translated by EU staff and has essentially no
+wrong-language content, while news_commentary demonstrably contains Chinese
+source lines. Two corpora with very different real contamination rates
+producing an identical drop rate points at the classifier, not the data.
+
+Sampling 20 europarl language rejections confirmed it. Three groups:
+
+- Correct short translations being discarded: `("Thank you, Mr Poettering.",
+  "Vielen Dank, Herr Poettering.")`, `("Why?", "Wieso?")`, `("I do not believe
+  so.", "Ich glaube nicht daran.")`
+- Pairs with no translation signal: `(".", ".")` appeared 5 times in 20;
+  `("Heaton-Harris (PPE-DE).", "Heaton-Harris (PPE-DE).")` is identical on
+  both sides
+- Report titles: `("Koch Report (A5-0105/1999)", "Bericht Koch
+  (A5-0105/1999)")` — legitimate but near-useless, mostly proper nouns
+
+So the filter was removing the right *pairs* for the wrong *reason*, while
+also discarding good short sentences.
+
+**commoncrawl `empty: 0` and `duplicate: 221`** are both suspiciously low —
+221 duplicates in 2.4M scraped web pairs is fewer in absolute terms than
+news_commentary's 304 on a corpus 12× smaller. Likely pre-deduplicated
+upstream, or near-duplicates dominate and exact matching misses them.
+
+### Run B: `min_len: 2`, language ID only when both sides ≥ 5 tokens
+
+| filter | news_commentary | europarl | commoncrawl |
+|---|---|---|---|
+| total | 201,288 | 1,920,209 | 2,399,123 |
+| empty | 546 | 11,289 | 0 |
+| length | 594 | 15,579 | 3,431 |
+| ratio | 239 | 4,070 | 122,520 |
+| giant_token | 96 | 185 | 3,656 |
+| language | 1,659 | 11,995 | 162,384 |
+| duplicate | 284 | 26,613 | 221 |
+| **kept** | **197,870** | **1,850,478** | **2,106,911** |
+
+### What run B showed
+
+**The two changes cancel out.**
+
+| | news_commentary | europarl |
+|---|---|---|
+| language recovered | +421 | +7,732 |
+| length removed | −560 | −12,290 |
+| net kept | −59 | −356 |
+
+Both corpora ended up with marginally *fewer* pairs. Changing two things at
+once made the experiment uninformative — the effects have to be separated to
+know whether either is worth keeping.
+
+**commoncrawl was byte-identical between runs**, every counter unchanged. Its
+1st-percentile length is 6 tokens (against 3 for the other two), so scraped
+listing fragments are long enough that neither `min_len: 2` nor the 5-token
+language gate touches anything. Consistent with `empty: 0` — this corpus
+behaves differently at the short end.
+
+### Decision
+
+Keep the 5-token language gate; revert `min_len` to 1.
+
+The gate is principled: the classifier was measurably unreliable below that
+length and was rejecting demonstrably correct pairs. `min_len: 2` was a guess
+aimed at `(".", ".")`, and it removes 12,290 europarl pairs to eliminate a few
+thousand junk ones. Short pairs like `("Why?", "Wieso?")` are legitimate
+training data for a translation model.
+
+To remove the junk directly, reject pairs whose two sides are identical after
+normalisation — that catches `(".", ".")` and `("Heaton-Harris (PPE-DE).",
+...)` alike without penalising length. Not yet implemented.
+
+### Known gap
+
+`clean_corpus` writes directly to its final output path with no `.partial`
+protection, unlike `download_corpus`. An interrupted run leaves a truncated
+file that looks complete.
