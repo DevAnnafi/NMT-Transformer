@@ -77,6 +77,7 @@ def clean_corpus(entry, cfg) -> dict:
     max_len_ratio = cleaning["max_len_ratio"]
     max_token_chars = cleaning["max_token_chars"]
     language_id = cleaning["language_id"]
+    language_id_min_tokens = cleaning["language_id_min_tokens"]
 
     seen = set()
     stats = {
@@ -118,7 +119,10 @@ def clean_corpus(entry, cfg) -> dict:
                 stats["giant_token"] += 1
                 continue
 
-            if language_id and not is_expected_language(s, t, src_lang, tgt_lang):
+            if (language_id
+                    and len(s.split()) >= language_id_min_tokens
+                    and len(t.split()) >= language_id_min_tokens
+                    and not is_expected_language(s, t, src_lang, tgt_lang)):
                 stats["language"] += 1
                 continue
 
