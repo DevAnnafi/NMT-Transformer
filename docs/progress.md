@@ -365,3 +365,121 @@ interrupted run leaves a truncated output file that looks complete.
 corpus but carries the topically-related-but-not-parallel failure that no
 filter catches. When `max_pairs` is set on Day 11, weight toward europarl and
 news_commentary.
+
+## Day 3 — Hand-rolled BPE, naive implementation
+
+**Status:** complete. Correct, and measurably too slow to use.
+
+### Implementation
+
+`src/data/tokenizer.py`:
+
+- `build_word_freqs` — collapses the corpus to `{word: frequency}`. Everything
+  downstream operates on this rather than the corpus, so each merge costs word
+  *types* instead of tokens.
+- `to_symbols` — word into characters plus a `</w>` marker
+- `count_pairs` — adjacent symbol pairs, weighted by word frequency
+- `merge_pair` — applies one merge across the vocabulary
+- `learn_bpe` — the loop; returns ordered merge rules and the final vocab
+
+### Design decisions
+
+**End-of-word marker.** Without `</w>`, a merge learned from `low` would also
+apply to the `low` inside `lower`, treating a prefix as a complete word.
+Regression-tested: after six merges on the reference example, `lower` still
+decomposes as `low` + `e` + `r` + `</w>`.
+
+**Deterministic tie-breaking.** Round 1 of the reference example has three
+pairs tied at count 9. `max()` over a `sorted()` key list keeps the first
+maximal element, so ties resolve to the lexicographically smallest pair.
+Reproducible across runs, which matters because Day 4 must produce identical
+output.
+
+**`learn_bpe` returns the final vocab as well as the merges.** The merge list
+alone does not say which symbols exist; Day 4 needs the symbol set to derive
+the token vocabulary.
+
+**`merge_pair` accumulates with `+=` into a `Counter`.** Two distinct symbol
+tuples can merge into the same result — assigning rather than accumulating
+would silently drop one word's frequency.
+
+### Correctness
+
+Six tests. The key one asserts the full merge sequence on the reference
+example from Sennrich et al.:
+
+```
+low 5, lower 2, newest 6, widest 3
+→ ("e","s"), ("es","t"), ("est","</w>"), ("l","o"), ("lo","w"), ("e","w")
+```
+
+One assertion covering frequency weighting, tie-breaking, merge application,
+and ordering.
+
+### Timing — the point of today
+
+news_commentary only (en + de together):
+
+| | |
+|---|---|
+| word types | 369,885 |
+| tokens | 8,834,033 |
+| word-frequency build | 1.6s |
+| 100 merges | 93.8s |
+| **per merge** | **0.94s** |
+
+**Projection.** 37,000 merges × 0.94s ≈ **9.6 hours** on news_commentary
+alone. The shared vocabulary needs all three corpora — 4.16M pairs against
+199k, likely 1.5–2M word types. Since each merge is a full vocabulary pass,
+that is roughly **two days of continuous compute** for one BPE run.
+
+Not usable. This is the measurement that justifies Day 4.
+
+**Where the time goes.** `count_pairs` re-walks all 369,885 words on every
+merge, but a single merge only changes the words containing that pair —
+typically a few thousand. Roughly 99% of the work is recounting unchanged
+data, 37,000 times over. The fix is a pair → containing-words index with
+incremental updates.
+
+### First 20 merges — reference output
+
+Day 4's optimised implementation must reproduce this list exactly.
+
+```
+ 1 ('e', '</w>')    11 ('d', '</w>')
+ 2 ('e', 'n')       12 ('t', 'h')
+ 3 ('e', 'r')       13 ('o', 'n')
+ 4 ('i', 'n')       14 ('er', '</w>')
+ 5 ('s', '</w>')    15 ('u', 'n')
+ 6 ('c', 'h')       16 ('t', 'i')
+ 7 ('t', '</w>')    17 ('.', '</w>')
+ 8 ('en', '</w>')   18 ('a', 'l')
+ 9 ('a', 'n')       19 ('o', 'r')
+10 (',', '</w>')    20 ('e', 's')
+```
+
+Sanity check on the linguistics: merge 1 is word-final *e*, very common in
+both languages. Merge 6 `ch` is German-characteristic (*ich*, *nicht*,
+*auch*); merge 12 `th` is English-characteristic (*the*, *this*, *that*). The
+shared vocabulary is picking up both languages' digraphs from a single merge
+list, which is the argument for sharing rather than training two vocabularies.
+
+Merge 8 `en</w>` builds on merge 2 — the German plural and infinitive ending
+becoming one token. Merge 14 `er</w>` is the comparative and agent suffix.
+Compositional merges appearing this early indicate the algorithm is behaving
+as intended.
+
+Merges 10, 11 and 17 are punctuation attaching to `</w>`, since cleaning left
+some punctuation space-separated.
+
+### Carried into Day 4
+
+- Optimise: pair → containing-words index, incremental merge updates
+- Verify the optimised version reproduces the 20 merges above exactly
+- Derive the merge count from `vocab_size: 37000` minus the base alphabet
+  minus the four special tokens
+- Build the shared vocabulary from all six cleaned files, not just
+  news_commentary
+- Implement encode/decode and assert `decode(encode(s)) == s` on sentences
+  with punctuation, numbers, and German compounds
+
